@@ -1,32 +1,29 @@
 
 package client;
 
+import app.logic.GameLogic;
 import app.ui.ClientUI;
+import game.Character;
 import game.GameEngine;
 
 public final class Client
 {
     public static final String STOP = "0";
     public static final String CHAT = "1";
+    public static final String DC = "2";
+    public static final String ID = "3";
+    public static final String PORT = "4";
     
     protected static final String CMD_EXIT = "exit";
-    protected static final String CMD_STOP = "stop";
     protected static final String CMD_CONNECT = "connect";
+    protected static final String CMD_CHEAT = "cheat";
     
-    private long clientID;
+    protected static final String CHEAT_CODE0 = "brutebugsalot";
+    protected static final String CHEAT_CODE1 = "quickbugsalot";
+    
     private static boolean stopped = true;
     
     private Client(){}
-    
-    public void setID(long id)
-    {
-        clientID = id;
-    }
-    
-    public long getID()
-    {
-        return clientID;
-    }
     
     public static void stop()
     {
@@ -53,10 +50,38 @@ public final class Client
                 ClientUI.dispose();
                 break;
             }
-            case CMD_STOP:
+            case CMD_CHEAT:
             {
-                stop();
-                break;
+                if(stopped)
+                {
+                    ClientUI.writePrompt("Cannot execute cheat commands while off-game.");
+                    break;
+                }
+                
+                if(comSplit.length < 2)
+                {
+                    ClientUI.writeError("Invalid command. Cheat code required.");
+                    break;
+                }
+                
+                switch(comSplit[1])
+                {
+                    case CHEAT_CODE0:
+                    {
+                        for(int i = 0; i < 100; i++)
+                        {
+                            Character character = GameLogic.createCharacter(GameLogic.BRUTEBUG, GameLogic.charID++, 0, 0);
+                                
+                            character.setOwner(ChatClient.getInstance().getID());
+                            character.setActive(true);
+                            GameEngine.getInstance().addGameObject(character);
+                        }
+                        
+                        break;
+                    }
+                    default:
+                        ClientUI.writeError("Unknown cheat code.");
+                }
             }
             case CMD_CONNECT:
             {
@@ -74,8 +99,8 @@ public final class Client
                     
                 if(ChatClient.getInstance().connect(comSplit[1]) && GameClient.getInstance().connect(comSplit[1]))
                 {
-                    GameClient.getInstance().start();
                     ChatClient.getInstance().start();
+                    GameClient.getInstance().start();
                     GameEngine.getInstance().start();
                     stopped = false;
                 }

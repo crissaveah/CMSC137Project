@@ -1,8 +1,12 @@
 
 package game;
 
+import app.logic.GameLogic;
 import app.ui.ClientUI;
+import client.ChatClient;
+import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
@@ -14,24 +18,33 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class GameEngine implements Runnable, MouseListener, MouseMotionListener, KeyListener
 {
+    private static final int SCROLL_SCALE = 1000;
+    
     private int fps;
     private int frames;
     private int xView;
     private int yView;
     private int xMouse;
     private int yMouse;
+    private int xPress;
+    private int yPress;
     private int worldWidth;
     private int worldHeight;
     private int halfWidth;
     private int halfHeight;
-    private int scrollSpeed;
+    private float scrollSpeed;
     private float delta;
     private long prevFPSTime;
     private long currentTime;
     private long previousTime;
     private boolean stopped;
-    private boolean gameStateDirty;
+    private boolean dragged;
+    private boolean dragging;
+    private Rectangle dragArea;
+    private Graphics2D graphics;
     private AffineTransform transform;
+    private CopyOnWriteArrayList<GameUI> uis;
+    private CopyOnWriteArrayList<GameObject> temp;
     private CopyOnWriteArrayList<GameObject> objects;
     private CopyOnWriteArrayList<GameListener> listeners;
     private BufferedImage framebuffer;
@@ -42,12 +55,15 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     {
         xView = 0;
         yView = 0;
-        scrollSpeed = 1;
+        scrollSpeed = 0.75f;
         worldWidth = 2048;
         worldHeight = 2048;
+        dragArea = new Rectangle();
         transform = new AffineTransform();
         halfWidth = ClientUI.getWidth()/2;
         halfHeight = ClientUI.getHeight()/2;
+        temp = new CopyOnWriteArrayList<>();
+        uis = new CopyOnWriteArrayList<>();
         objects = new CopyOnWriteArrayList<>();
         listeners = new CopyOnWriteArrayList<>();
     }
@@ -62,12 +78,12 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
         new Thread(instance).start();
     }
     
-    public void setScrollSpeed(int speed)
+    public void setScrollSpeed(float speed)
     {
         scrollSpeed = speed;
     }
     
-    public int getScrollSpeed()
+    public float getScrollSpeed()
     {
         return scrollSpeed;
     }
@@ -115,9 +131,24 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
         listeners.add(object);
     }
     
+    public void removeGameObject(GameObject object)
+    {
+        objects.remove(object);
+        listeners.remove(object);
+    }
+    
     public GameObject getGameObject(int index)
     {
         return objects.get(index);
+    }
+    
+    public GameObject getGameObject(int owner, int id)
+    {
+        for(GameObject object : objects)
+            if(object.owner == owner && object.id == id)
+                return object;
+        
+        return null;
     }
     
     public CopyOnWriteArrayList<GameObject> getGameObjects()
@@ -133,6 +164,48 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     public GameListener getGameListener(int index)
     {
         return listeners.get(index);
+    }
+    
+    public CopyOnWriteArrayList<GameListener> getGameListeners()
+    {
+        return listeners;
+    } 
+    
+    public boolean contains(int owner, int id)
+    {
+        for(GameObject object : objects)
+            if(object.getOwner() == owner && object.getID() == id)
+                return true;
+        
+        return false;
+    }
+    
+    public void removeAllObjects(int owner)
+    {
+        temp.clear();
+        
+        for(GameObject object : objects)
+            if(object.getOwner() == owner)
+                temp.add(object);
+        
+        objects.removeAll(temp);
+    }
+    
+    public void addUI(GameUI ui)
+    {
+        uis.add(ui);
+        listeners.add(ui);
+    }
+    
+    public void removeUI(GameUI ui)
+    {
+        uis.remove(ui);
+        listeners.remove(ui);
+    }
+    
+    public GameUI getUI(int index)
+    {
+        return uis.get(index);
     }
     
     public int getFPS()
@@ -155,24 +228,36 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
         return halfHeight + yView - y;
     }
     
-    public void setGameStateDirty(boolean dirty)
+    public int getScreenX(int x)
     {
-        gameStateDirty = dirty;
+        return x + halfWidth - xView;
     }
     
-    public boolean isGameStateDirty()
+    public int getScreenY(int y)
     {
-        return gameStateDirty;
+        return halfHeight - y + yView;
+    }
+    
+    public Rectangle getDragArea()
+    {
+        return dragArea;
+    }
+    
+    public boolean consumeDrag()
+    {
+        boolean drag = this.dragged;
+        dragged = false;
+        return drag;
     }
     
     private void calculateDelta()
     {
-        delta = (currentTime - previousTime)/1000000f;    
+        delta = (currentTime - previousTime) / 1000000000f;    
     }
     
     private void calculateFPS()
     {
-        if(currentTime - prevFPSTime > 1000000000)
+        if(currentTime - prevFPSTime > 1000000000) //one second has passed, output accumulated frames
         {
             fps = frames;
             frames = 0;
@@ -184,21 +269,23 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     
     private void checkScroll()
     {
-        double scrollAmount = Math.floor(scrollSpeed * delta);
+        double scaledDelta = delta * SCROLL_SCALE;
+        double scrollAmount = Math.floor(scrollSpeed * scaledDelta);
         
-        if(xMouse == 0 && xView > (ClientUI.getWidth() - worldWidth)/2 + delta)
+        if(xMouse == 0 && xView > (ClientUI.getWidth() - worldWidth)/2 + scaledDelta)
             xView -= scrollAmount;
-        else if(xMouse == ClientUI.getWidth()-1 && xView < (worldWidth - ClientUI.getWidth())/2 - delta)
+        else if(xMouse == ClientUI.getWidth()-1 && xView < (worldWidth - ClientUI.getWidth())/2 - scaledDelta)
             xView += scrollAmount;
 
-        if(yMouse == 0 && yView < (worldHeight - ClientUI.getHeight())/2 - delta)
+        if(yMouse == 0 && yView < (worldHeight - ClientUI.getHeight())/2 - scaledDelta)
             yView += scrollAmount;
-        else if(yMouse == ClientUI.getHeight()-1 && yView > (ClientUI.getHeight() - worldHeight)/2 + delta)
+        else if(yMouse == ClientUI.getHeight()-1 && yView > (ClientUI.getHeight() - worldHeight)/2 + scaledDelta)
             yView -= scrollAmount;
     }
     
     private AffineTransform applyTransform(GameObject object)
     {   
+        int radius = (int) object.getMaxExtent() * 2 + 6;
         double objHalfWidth = object.getSprite().getWidth()/2;
         double objHalfHeight = object.getSprite().getHeight()/2;
         double worldX = object.location.getX();
@@ -210,7 +297,82 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
         transform.translate(screenX, screenY);
         transform.rotate(object.rotation, objHalfWidth, objHalfHeight);
         
+        if(object.hitPoints > 0)
+        {
+            if(object.isSelected())
+            {
+                graphics.setColor(Color.WHITE);
+                graphics.drawOval((int) screenX - 3, (int) screenY - 3, radius, radius);
+            }
+            else if(object.owner != ChatClient.getInstance().getID() && !(object instanceof Projectile))
+            {
+                graphics.setColor(Color.RED);
+                graphics.drawOval((int) screenX - 3, (int) screenY - 3, radius, radius);
+            }
+        }
+        
         return transform;
+    }
+    
+    private void drawUtilities()
+    {
+        graphics.setColor(Color.WHITE);
+        graphics.drawString("FPS: "+Integer.toString(fps), ClientUI.getWidth()-58, 20); //print fps
+        graphics.drawString("Reserved Units: "+GameLogic.numChars, ClientUI.getWidth()-120, 40); //print available units left
+        graphics.drawString("Remaining Units: "+GameLogic.numLives, ClientUI.getWidth()-128, 60); //print available units left
+
+        if(dragging) //draw drag box
+        {
+            int x; 
+            int y;
+            int width;
+            int height;
+
+            if(xMouse >= xPress)
+            {
+                x = xPress;
+                width = xMouse-xPress;
+            }
+            else
+            {
+                x = xMouse;
+                width = xPress-xMouse;
+            }
+
+            if(yMouse >= yPress)
+            {
+                y = yPress;
+                height = yMouse-yPress;
+            }
+            else
+            {
+                y = yMouse;
+                height = yPress-yMouse;
+            }
+
+            graphics.drawRect(x, y, width, height);
+            
+            dragArea.setLocation(x, y);
+            dragArea.setSize(width, height);
+        }
+    }
+    
+    private void drawUIs()
+    {
+        for(GameUI ui : uis)
+        {
+            if(ui.hasIcon()) //draw icon
+            {
+                transform.setToIdentity();
+                transform.translate(ui.x, ui.y);
+                graphics.drawImage(ui.getIcon(ui.getActiveIcon()), transform, null);
+            }
+            else
+            {
+                graphics.setColor(ui.color);
+                graphics.fillRoundRect(ui.x, ui.y, ui.width, ui.height, ui.cornerRadius, ui.cornerRadius);
+            }
+        }
     }
 
     @Override
@@ -224,30 +386,20 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
         previousTime = System.nanoTime();
         
         framebuffer = new BufferedImage(ClientUI.getWidth(), ClientUI.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        
-        Graphics2D graphics = framebuffer.createGraphics();
-        graphics.clipRect(0, 0, ClientUI.getWidth(), ClientUI.getHeight());
+        graphics = framebuffer.createGraphics();
         
         while(!stopped)
         {
             checkScroll(); //update viewport transformation
             
-            for(GameListener listener : listeners)
-            {
-                if(gameStateDirty) //update game state
-                {
-                    listener.update();
-                    gameStateDirty = false;
-                }
-            }
+            for(GameObject object : objects) //process transformation then render object to offscreen framebuffer
+                if(object.isVisible())
+                    graphics.drawImage(object.getSprite(), applyTransform(object), null);
             
-            for(GameObject object : objects) //process collision detection and transformation
-            {
-                object.checkCollision();
-                graphics.drawImage(object.getSprite(), applyTransform(object), null);
-            }
+            drawUIs();
+            drawUtilities();
             
-            ClientUI.getDrawingSurface().repaint(); //update graphics
+            ClientUI.getDrawingSurface().repaint(); //update onscreen framebuffer
             
             currentTime = System.nanoTime();
             
@@ -257,7 +409,7 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
             previousTime = currentTime;
         }
         
-        for(GameObject object : objects) //reset object active state
+        for(GameObject object : objects) //reset active state
             object.setActive(false);
         
         //clean up
@@ -278,6 +430,10 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     @Override
     public void mousePressed(MouseEvent e)
     {
+        xPress = e.getX();
+        yPress = e.getY();
+        dragged = false;
+        
         for(GameListener listener : listeners)
             listener.processMouseEvent(e);
     }
@@ -285,6 +441,8 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     @Override
     public void mouseReleased(MouseEvent e) 
     {
+        dragging = false;
+        
         for(GameListener listener : listeners)
             listener.processMouseEvent(e);
     }
@@ -306,6 +464,11 @@ public final class GameEngine implements Runnable, MouseListener, MouseMotionLis
     @Override
     public void mouseDragged(MouseEvent e) 
     {
+        xMouse = e.getX();
+        yMouse = e.getY();
+        dragging = true;
+        dragged = true;
+        
         for(GameListener listener : listeners)
             listener.processMouseEvent(e);
     }

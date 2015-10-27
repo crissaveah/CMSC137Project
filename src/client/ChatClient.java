@@ -8,10 +8,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
-import server.Server;
+import server.ConnectionManager;
 
 public final class ChatClient implements Runnable
 {
+    private int id = -1;
+    private int port = -1;
     private long timeout = 10;
     private boolean stopped;
     private String name;
@@ -35,6 +37,21 @@ public final class ChatClient implements Runnable
     public String getName()
     {
         return name;
+    }
+    
+    public void setID(int id)
+    {
+        this.id = id;
+    }
+    
+    public int getID()
+    {
+        return id;
+    }
+    
+    public int getGamePort()
+    {
+        return port;
     }
     
     public void stop()
@@ -67,12 +84,14 @@ public final class ChatClient implements Runnable
     {
         try 
         {
-            socket = new Socket(host, Server.CHAT_PORT);
+            socket = new Socket(host, ConnectionManager.CHAT_PORT);
             writer = new PrintWriter(socket.getOutputStream(), true);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             name = InetAddress.getLocalHost().getHostName();
 
             ClientUI.writePrompt("Connection successful.");
+            ClientUI.setConsoleVisible(false);
+            
             return true;
         } 
         catch(IOException ex) 
@@ -108,13 +127,21 @@ public final class ChatClient implements Runnable
                     {
                         if(message.startsWith(Client.CHAT))
                             ClientUI.writeChat(message.substring(2));
+                        else if(message.startsWith(Client.ID))
+                            id = Integer.valueOf(message.substring(2));
+                        else if(message.startsWith(Client.PORT))
+                            port = Integer.valueOf(message.substring(2));
+                        else if(message.startsWith(Client.DC))
+                        {
+                            String[] info = message.split(" ");
+                            GameClient.getInstance().playerDisconnected(Integer.parseInt(info[1]));
+                            ClientUI.writeError(info[2]);
+                        }
                         else if(message.equals(Client.STOP))
                         {
                             ClientUI.writeError("Disconnected from server.");
                             Client.stop();
                         }
-                        
-                        message = null;
                     }
                 }
             } 

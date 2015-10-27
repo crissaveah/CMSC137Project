@@ -5,11 +5,8 @@ import app.ui.ServerConsole;
 
 public final class Server implements Runnable
 {
-    public static final int CHAT_PORT = 2853;
-    public static final int GAME_PORT = 2854;
-    public static final int MAX_CLIENTS = 50;
+    public static final int MAX_CLIENTS = 4;
     public static final int DATA_LENGTH = 128;
-    public static final String JOIN_GROUP = "231.0.0.1";
     
     protected static final String CMD_EXIT = "exit";
     protected static final String CMD_STOP = "stop";
@@ -66,8 +63,7 @@ public final class Server implements Runnable
     
     public void stop()
     {
-        ChatServer.getInstance().stop();
-        GameServer.getInstance().stop();
+        ConnectionManager.getInstance().stop();
         stopped = true;
     }
     
@@ -76,8 +72,7 @@ public final class Server implements Runnable
         if(!stopped)
             stop();
         
-        new Thread(ChatServer.create()).start();
-        new Thread(GameServer.create()).start();
+        new Thread(ConnectionManager.create()).start();
         
         stopped = false;
     }

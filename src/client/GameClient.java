@@ -3,11 +3,14 @@ package client;
 
 import app.ui.ClientUI;
 import game.GameEngine;
+import game.GameListener;
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
+import server.ConnectionManager;
 import server.Server;
 
 public final class GameClient implements Runnable
@@ -15,11 +18,11 @@ public final class GameClient implements Runnable
     private int timeout = 10;
     private boolean stopped = true;
     private boolean initialized;
+    private byte[] dataBuffer;
     private InetAddress host;
-    private InetAddress group;
     private DatagramPacket sendPacket;
     private DatagramPacket receivePacket;
-    private MulticastSocket socket;
+    private DatagramSocket socket;
     private static GameClient instance = new GameClient();
     
     private GameClient(){}
@@ -36,20 +39,9 @@ public final class GameClient implements Runnable
     
     public void stop()
     {
-        try 
-        {
-            socket.leaveGroup(group);
-        } 
-        catch(IOException ex) 
-        {
-            System.err.println("Failed to leave group.");
-        }
-        finally
-        {
-            socket.close();
-            stopped = true;
-            initialized = false;
-        }
+        socket.close();
+        stopped = true;
+        initialized = false;
     }
     
     public boolean isRunning()
@@ -67,18 +59,27 @@ public final class GameClient implements Runnable
         return timeout;
     }
     
-    public void send(byte[] response)
+    public void send(String response)
     {
-        try 
+        if(initialized)
         {
-            sendPacket.setData(response);
-            sendPacket.setLength(response.length);
-            socket.send(sendPacket);
-        } 
-        catch(IOException ex) 
-        {
-            System.err.println("Failed to send data.");
+            try 
+            {
+                byte[] data = response.getBytes("UTF-8");
+                
+                sendPacket.setData(data, 0, data.length);
+                socket.send(sendPacket);
+            }
+            catch(IOException ex) 
+            {
+                System.err.println("Failed to send data.");
+            }
         }
+    }
+    
+    public void playerDisconnected(int id)
+    {
+        GameEngine.getInstance().removeAllObjects(id);
     }
     
     public boolean connect(String host)
@@ -86,7 +87,7 @@ public final class GameClient implements Runnable
         try 
         {
             this.host = InetAddress.getByName(host);
-        } 
+        }
         catch(UnknownHostException ex) 
         {
             ClientUI.writeError("Host not recognized");
@@ -95,18 +96,7 @@ public final class GameClient implements Runnable
         
         try 
         {
-            group = InetAddress.getByName(Server.JOIN_GROUP);
-        } 
-        catch(UnknownHostException ex) 
-        {
-            ClientUI.writeError("Join group not recognized.");
-            return false;
-        }
-        
-        try 
-        {
-            socket = new MulticastSocket(Server.GAME_PORT);
-            socket.joinGroup(group);
+            socket = new DatagramSocket(ConnectionManager.GAME_PORT);
         }
         catch(IOException ex) 
         {
@@ -114,8 +104,11 @@ public final class GameClient implements Runnable
             return false;
         }
         
-        receivePacket = new DatagramPacket(new byte[Server.DATA_LENGTH], Server.DATA_LENGTH);
-        sendPacket = new DatagramPacket(new byte[Server.DATA_LENGTH], Server.DATA_LENGTH, this.host, Server.GAME_PORT);
+        dataBuffer = new byte[Server.DATA_LENGTH];
+        receivePacket = new DatagramPacket(dataBuffer, Server.DATA_LENGTH);
+        sendPacket = new DatagramPacket(new byte[Server.DATA_LENGTH], Server.DATA_LENGTH);
+        
+        sendPacket.setAddress(this.host);
         
         initialized = true;
         
@@ -125,25 +118,38 @@ public final class GameClient implements Runnable
     @Override
     public void run()
     {
+        while(ChatClient.getInstance().getGamePort() == -1) //block until game port is established
+        {
+            try 
+            {
+                Thread.sleep(timeout);
+            }
+            catch(InterruptedException ex) 
+            {
+            }
+        }
+        
+        sendPacket.setPort(ChatClient.getInstance().getGamePort());
+        
         stopped = false;
-int i = 0;
+        
         while(!stopped)
         {
             if(initialized)
             {
                 try 
                 {
-                    send(("Request"+i).getBytes());
-                    i++;
+                    Arrays.fill(dataBuffer, (byte) 0); //clear data buffer
                     socket.receive(receivePacket);
                     
-                    System.out.println(new String(receivePacket.getData(), 0, receivePacket.getLength()));
+                    String data = new String(receivePacket.getData(), "UTF-8").trim();
+
+                    for(GameListener listener : GameEngine.getInstance().getGameListeners())
+                        listener.update(data);
                     
                     receivePacket.setLength(Server.DATA_LENGTH);
-                    
-                    GameEngine.getInstance().setGameStateDirty(true);
                 }
-                catch(IOException ex) 
+                catch(IOException ex)
                 {
                 }
             }

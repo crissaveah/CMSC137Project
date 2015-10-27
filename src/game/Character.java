@@ -1,44 +1,23 @@
 
 package game;
 
+import app.logic.GameLogic;
+import client.ChatClient;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import util.EnginePool;
 
 public abstract class Character extends GameObject
 {
-    protected double attackSpeed;
-    protected double attackDamage;
-    protected double moveSpeed;
-    protected GameObject target;
+    private int attackDelay;
+    private int disposeDelay;
     
     public Character()
     {
-        hitPoints = 100;
-        moveSpeed = 0.2;
-        attackSpeed = 2;
-        attackDamage = 10;
+        disposeDelay = 6000;
     }
     
-    public void setTarget(GameObject target)
-    {
-        this.target = target;
-    }
-    
-    public GameObject getTarget()
-    {
-        return target;
-    }
-    
-    public void setHitPoints(int hp)
-    {
-        hitPoints = hp;
-    }
-    
-    public int getHitPoints()
-    {
-        return hitPoints;
-    }
-    
-    public void setMoveSpeed(double ms)
+    public void setMoveSpeed(int ms)
     {
         moveSpeed = ms;
     }
@@ -48,9 +27,9 @@ public abstract class Character extends GameObject
         return moveSpeed;
     }
     
-    public void setAttackSpeed(double as)
+    public void setAttackSpeed(int as)
     {
-        attackSpeed = as;
+        attackSpeed = Math.max(Math.min(as, 100), 0);
     }
     
     public double getAttackSpeed()
@@ -58,7 +37,7 @@ public abstract class Character extends GameObject
         return attackSpeed;
     }
     
-    public void setAttackDamage(double ad)
+    public void setAttackDamage(int ad)
     {
         attackDamage = ad;
     }
@@ -72,9 +51,10 @@ public abstract class Character extends GameObject
     {
         destination.set(x, y);
         direction.set(destination).subtract(location).normalize();
-        direction.multiply(moveSpeed * GameEngine.getInstance().getDelta());
         rotation = direction.angle();
+        
         move = true;
+        occupant = false;
     }
     
     public void move(Vector2 dest)
@@ -88,52 +68,72 @@ public abstract class Character extends GameObject
     }
     
     @Override
-    protected void processBehavior()
+    public void processKeyEvent(KeyEvent e) 
     {
+        
+    }
+
+    @Override
+    public void processMouseEvent(MouseEvent e) 
+    {
+        int x = GameEngine.getInstance().getWorldX(e.getX());
+        int y = GameEngine.getInstance().getWorldY(e.getY());
+        
+        if(e.getID() == MouseEvent.MOUSE_PRESSED)
+        {
+            if(e.getButton() == MouseEvent.BUTTON3)
+            {
+                if(selected && owner == ChatClient.getInstance().getID() && !checkPickTarget(e, x, y))
+                    move(x, y);
+            }
+        }
+    }
+    
+    @Override
+    protected void processBehavior()
+    {   
         double delta = GameEngine.getInstance().getDelta();
         double increment = moveSpeed * delta;
         
         if(move)
         {
-            location.add(direction);
-            dirty = true;
+            Vector2 locInc = EnginePool.Vector2.fetch().set(direction).multiply(increment);
             
-            //location increment is greater than distance to destination so finalize move
+            location.add(locInc);
+            
+            //move increment is greater than distance to destination so finalize move
             if(location.distance(destination) < increment)
             {
-                location.set(destination);
                 move = false;
-                dirty = false;
+                occupant = true;
+                location.set(destination);
             }
+            
+            EnginePool.Vector2.release(locInc);
         }
         
-        if(!collisions.isEmpty()) //process collision
+        checkCollision();
+        
+        if(!collisions.isEmpty()) //handle collision
         {
             Vector2 dirToCollider = EnginePool.Vector2.fetch();
             
             for(GameObject collider : collisions)
             {
                 dirToCollider.set(collider.location).subtract(location).normalize().multiply(increment);
-                
-                while(intersects(collider)) //move a unit away from collider
-                {
-                    if(location.equals(collider.location))
-                        location.subtract(collider.getSprite().getWidth(), 0);
-                    else
-                        location.subtract(dirToCollider);
-                }
+
+                //move away from collider
+                if(location.equals(collider.location))
+                    location.subtract(collider.getSprite().getWidth(), 0);
+                else
+                    location.subtract(dirToCollider);
 
                 if(move)
                 {
-                    //an object already occupies the destination, don't try to squeeze in
-                    //1. stop if collided with occupant
-                    //2. stop if collided with an object which satisfies the previous or this condition
-                    if(occupant != null && collidedOccupant)
+                    if(collider.occupant && collider.selected) //collided with an occupant, finalize move
                     {
                         move = false;
-                        dirty = false;
-                        collidedOccupant = false;
-                        occupant =  null;
+                        occupant = true;
                         continue;
                     }
                     
@@ -153,7 +153,53 @@ public abstract class Character extends GameObject
                 }
             }
             
+            collisions.clear();
+            
             EnginePool.Vector2.release(dirToCollider);
+        }
+        
+        if(target != null && target.getHitPoints() > 0)
+        {
+            if(attackDelay == 0)
+            {
+                if(withinAttackRange(target)) //target in range, attack
+                {
+                    //always face target
+                    direction.set(target.location).subtract(location).normalize();
+                    rotation = direction.angle();
+                    move = false;
+                    
+                    Projectile projectile = new Projectile(this);
+                    projectile.setTarget(target);
+                    projectile.launch(target.location);
+                }
+                else //move towards target until within attack range
+                    move(target.location);
+                
+                attackDelay = (int) ((2000 - attackSpeed) * delta);
+            }
+            else
+                attackDelay--;
+        }
+        
+        if(hitPoints <= 0) //unit is dead
+        {
+            move = false;
+            
+            if(owner == ChatClient.getInstance().getID())
+                GameLogic.numLives--;
+            
+            setCollidable(false);
+            setCurrentSprite(1);
+            setOwner(-1);
+                    
+            if(disposeDelay == 0)
+            {
+                GameEngine.getInstance().removeGameObject(this);
+                setActive(false);
+            }
+            else
+                disposeDelay--;
         }
     }
 }

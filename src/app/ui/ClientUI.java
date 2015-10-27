@@ -1,12 +1,15 @@
 
 package app.ui;
 
+import app.ClientMain;
 import client.ChatClient;
 import client.Client;
 import game.GameSurface;
 import java.awt.Color;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -14,6 +17,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import javax.swing.GroupLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -32,11 +36,11 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 import javax.swing.text.StyledDocument;
 
-public final class ClientUI 
+public final class ClientUI
 {
     public static final AttributeSet ERROR_ATTRIB = StyleContext.getDefaultStyleContext().addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, Color.RED);
     public static final AttributeSet PROMPT_ATTRIB = StyleContext.getDefaultStyleContext().addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, Color.BLACK);
-    public static final AttributeSet CHAT_ATTRIB = StyleContext.getDefaultStyleContext().addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, Color.GREEN);
+    public static final AttributeSet CHAT_ATTRIB = StyleContext.getDefaultStyleContext().addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, new Color(0, 200, 0));
     
     private static JFrame clientFrame;
     
@@ -49,6 +53,11 @@ public final class ClientUI
     private static GameSurface gamePanel;
     
     private ClientUI(){}
+    
+    public static void setConsoleVisible(boolean visible)
+    {
+        consoleDialog.setVisible(visible);
+    }
     
     public static void writeError(final String message)
     {
@@ -208,9 +217,16 @@ public final class ClientUI
         clientFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         clientFrame.setName(""); // NOI18N
         clientFrame.setUndecorated(true);
+        
         clientFrame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent evt) {
                 formWindowClosing(evt);
+            }
+        });
+        
+        clientFrame.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent evt) {
+                formKeyPressed(evt);
             }
         });
 
@@ -241,6 +257,8 @@ public final class ClientUI
             consoleDialog.setOpacity(0.7f);
         }
         
+        ImageIcon cursor = new ImageIcon(ClientMain.class.getResource("sprite/cursor.png"));
+        clientFrame.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(cursor.getImage(), new Point(0, 0), ""));
         clientFrame.setVisible(true);
         
         consoleDialog.setSize(400, 150);
@@ -266,6 +284,8 @@ public final class ClientUI
 
             consoleTextField.setText("");
         }
+        else if(evt.getKeyCode() == KeyEvent.VK_ESCAPE)
+            consoleDialog.setVisible(false);
     }                                           
 
     private static void consoleButtonActionPerformed(ActionEvent evt) 
@@ -288,4 +308,12 @@ public final class ClientUI
         Client.stop();
         consoleDialog.dispose();
     }    
+    
+    private static void formKeyPressed(KeyEvent evt)
+    {
+        if(evt.getKeyCode() == KeyEvent.VK_ENTER)
+        {
+            consoleDialog.setVisible(true);
+        }
+    }
 }

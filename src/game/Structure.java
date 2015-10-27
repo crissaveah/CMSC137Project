@@ -12,7 +12,7 @@ public class Structure extends GameObject
     }
 
     @Override
-    public void update() 
+    public void update(String data) 
     {
     }
 

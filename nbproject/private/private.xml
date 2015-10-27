@@ -3,11 +3,13 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Crissa/Documents/CMSC%20137/CMSC137Project%20v.3/src/app/ui/ServerConsole.java</file>
-            <file>file:/C:/Users/Crissa/Documents/CMSC%20137/CMSC137Project%20v.3/src/app/test/GameLogic.java</file>
-            <file>file:/C:/Users/Crissa/Documents/CMSC%20137/CMSC137Project%20v.3/src/util/Pool.java</file>
-            <file>file:/C:/Users/Crissa/Documents/CMSC%20137/CMSC137Project%20v.3/src/client/GameClient.java</file>
-            <file>file:/C:/Users/Crissa/Documents/CMSC%20137/CMSC137Project%20v.3/src/app/ui/ClientUI.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/game/Worker.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/app/ui/ServerConsole.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/game/Character.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/app/ui/ClientUI.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/app/logic/GameLogic.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/util/Pool.java</file>
+            <file>file:/C:/Users/Crissa/Desktop/CMSC137Project/src/game/GameObject.java</file>
         </group>
     </open-files>
 </project-private>

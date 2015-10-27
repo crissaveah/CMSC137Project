@@ -12,7 +12,7 @@ public class Terrain extends GameObject
     }
 
     @Override
-    public void update() 
+    public void update(String data) 
     {
     }
 

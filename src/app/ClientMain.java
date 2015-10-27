@@ -1,7 +1,7 @@
 
 package app;
 
-import app.test.GameLogic;
+import app.logic.GameLogic;
 import app.ui.ClientUI;
 import java.awt.EventQueue;
 import java.awt.Toolkit;
@@ -12,7 +12,7 @@ import java.net.URISyntaxException;
 
 public final class ClientMain 
 {
-    private static final int APP_LOCK =6981;
+    private static final int APP_LOCK = 6981;
     
     public static void main(String args[])
     {
@@ -25,10 +25,9 @@ public final class ClientMain
                 {
                     try 
                     {
-                        ClientUI.initialize();
-                        
-                        GameLogic game = new GameLogic();
                         ServerSocket appLock = new ServerSocket(APP_LOCK);
+                        ClientUI.initialize();
+                        GameLogic game = new GameLogic();
                     }
                     catch(IOException ex) 
                     {
@@ -40,7 +39,7 @@ public final class ClientMain
         );
     }
     
-    public static File getResource(String path)
+    public static File getFile(String path)
     {
         try 
         {

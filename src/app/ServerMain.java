@@ -9,7 +9,7 @@ import server.Server;
 
 public final class ServerMain
 {
-    private static final int APP_LOCK = 5209;
+    private static final int APP_LOCK = 6982;
     
     public static void main(String args[])
     {
