@@ -67,15 +67,6 @@ public final class GameLogic implements GameListener, GameUIListener
         GameEngine.getInstance().addGameObject(terrain);
         GameEngine.getInstance().setWorldSize(terrain.getSprite().getWidth(), terrain.getSprite().getHeight());
         GameEngine.getInstance().addGameListener(this);
-        
-//        for(int i = 0; i < 10; i++)
-//        {
-//            Brutebug bug = (Brutebug) createCharacter(BRUTEBUG, 123123, -800, -800);
-//            bug.setOwner(123123);
-//            bug.setActive(true);
-//            bug.move(800, 800);
-//            GameEngine.getInstance().addGameObject(bug);
-//        }
     }
     
     public static Character createCharacter(int type, int id, int x, int y)

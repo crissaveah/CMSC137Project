@@ -79,6 +79,19 @@ public final class Client
                         
                         break;
                     }
+                    case CHEAT_CODE1:
+                    {
+                        for(int i = 0; i < 100; i++)
+                        {
+                            Character character = GameLogic.createCharacter(GameLogic.QUICKBUG, GameLogic.charID++, 0, 0);
+                                
+                            character.setOwner(ChatClient.getInstance().getID());
+                            character.setActive(true);
+                            GameEngine.getInstance().addGameObject(character);
+                        }
+                        
+                        break;
+                    }
                     default:
                         ClientUI.writeError("Unknown cheat code.");
                 }

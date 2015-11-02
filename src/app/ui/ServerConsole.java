@@ -48,7 +48,7 @@ public final class ServerConsole
         serverConsoleFrame.dispose();
     }
     
-    public static void writeError(final String message)
+    public static void writeError(String message)
     {
         SwingUtilities.invokeLater
         (
@@ -69,7 +69,7 @@ public final class ServerConsole
         );
     }
     
-    public static void writePrompt(final String message)
+    public static void writePrompt(String message)
     {
         SwingUtilities.invokeLater
         (

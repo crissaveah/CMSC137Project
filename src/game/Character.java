@@ -49,12 +49,15 @@ public abstract class Character extends GameObject
     
     public void move(double x, double y)
     {
-        destination.set(x, y);
-        direction.set(destination).subtract(location).normalize();
-        rotation = direction.angle();
+        if(hitPoints > 0)
+        {
+            destination.set(x, y);
+            direction.set(destination).subtract(location).normalize();
+            rotation = direction.angle();
         
-        move = true;
-        occupant = false;
+            move = true;
+            occupant = false;
+        }
     }
     
     public void move(Vector2 dest)
@@ -191,8 +194,7 @@ public abstract class Character extends GameObject
             
             setCollidable(false);
             setCurrentSprite(1);
-            setOwner(-1);
-                    
+            
             if(disposeDelay == 0)
             {
                 GameEngine.getInstance().removeGameObject(this);

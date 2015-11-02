@@ -59,7 +59,7 @@ public final class ClientUI
         consoleDialog.setVisible(visible);
     }
     
-    public static void writeError(final String message)
+    public static void writeError(String message)
     {
         SwingUtilities.invokeLater
         (
@@ -80,7 +80,7 @@ public final class ClientUI
         );
     }
     
-    public static void writePrompt(final String message)
+    public static void writePrompt(String message)
     {
         SwingUtilities.invokeLater
         (
@@ -101,7 +101,7 @@ public final class ClientUI
         );
     }
     
-    public static void writeChat(final String message)
+    public static void writeChat(String message)
     {
         SwingUtilities.invokeLater
         (

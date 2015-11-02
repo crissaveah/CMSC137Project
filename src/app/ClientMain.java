@@ -27,7 +27,7 @@ public final class ClientMain
                     {
                         ServerSocket appLock = new ServerSocket(APP_LOCK);
                         ClientUI.initialize();
-                        GameLogic game = new GameLogic();
+                        new GameLogic();
                     }
                     catch(IOException ex) 
                     {

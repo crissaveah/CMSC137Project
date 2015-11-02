@@ -12,7 +12,7 @@ public class Brutebug extends Character
     {
         type = GameLogic.BRUTEBUG;
         moveSpeed = 20;
-        hitPoints = 2000;
+        hitPoints = 500;
         attackRange = 60;
         attackDamage = 50;
         attackSpeed = 50;

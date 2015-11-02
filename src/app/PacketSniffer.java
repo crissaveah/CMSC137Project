@@ -1,6 +1,7 @@
 
 package app;
 
+import app.ui.PcapUI;
 import java.awt.EventQueue;
 import java.awt.Toolkit;
 import java.io.IOException;
@@ -22,8 +23,9 @@ public class PacketSniffer
                 {
                     try
                     {
-                        Sniffer sniffer = new Sniffer();
                         ServerSocket appLock = new ServerSocket(APP_LOCK);
+                        Sniffer sniffer = new Sniffer();
+                        PcapUI.initialize(sniffer);
                     }
                     catch(IOException ex) 
                     {
