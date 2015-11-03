@@ -49,7 +49,7 @@ public abstract class Pool<T extends Poolable>
     
     protected abstract T newInstance();
 
-    public static <T extends Poolable> Pool<T> create(Class<T> poolable, int maxSize)
+    public static <T extends Poolable> Pool<T> create(final Class<T> poolable, int maxSize)
     {
         return new Pool<T>(maxSize)
         {
